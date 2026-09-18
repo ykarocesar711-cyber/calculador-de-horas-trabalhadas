@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculador de Horas</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    color: #17202a;
+    display: flex;
+    justify-content: center;
+    padding: 24px 14px;
+  }
+  .app {
+    width: 100%;
+    max-width: 460px;
+  }
+  h1 { margin: 8px 0 4px; font-size: 28px; }
+  .subtitle { color: #667085; margin: 0 0 22px; }
+  .card {
+    background: white;
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.08);
+    margin-bottom: 14px;
+  }
+  label {
+    display: block;
+    font-weight: 700;
+    margin: 0 0 7px;
+  }
+  input {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #d0d5dd;
+    border-radius: 10px;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  button {
+    width: 100%;
+    border: 0;
+    border-radius: 11px;
+    padding: 13px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .now { background: #17202a; color: white; margin-top: -4px; margin-bottom: 16px; }
+  .clear { background: #eef1f4; color: #17202a; }
+  .result {
+    display: grid;
+    gap: 10px;
+  }
+  .box {
+    background: #f7f8fa;
+    border-radius: 13px;
+    padding: 15px;
+  }
+  .box span { display:block; color:#667085; font-size:14px; margin-bottom:5px; }
+  .box strong { font-size: 25px; }
+  .status {
+    text-align: center;
+    padding: 14px;
+    border-radius: 12px;
+    background: #eef7ee;
+    font-weight: 700;
+    margin-top: 10px;
+  }
+  .hint { color:#667085; font-size:13px; line-height:1.4; margin-top:15px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>⏱️ Calculador de Horas</h1>
+  <p class="subtitle">Veja quanto já trabalhou e quanto falta para terminar.</p>
+
+  <div class="card">
+    <label for="entrada">Hora de entrada</label>
+    <input id="entrada" type="time">
+
+    <label for="saida">Hora de saída prevista</label>
+    <input id="saida" type="time">
+
+    <label for="intervalo">Intervalo</label>
+    <input id="intervalo" type="time" value="01:00">
+
+    <button class="now" onclick="usarAgora()">🕐 Usar horário atual como entrada</button>
+
+    <div class="grid">
+      <button onclick="calcular()">Calcular</button>
+      <button class="clear" onclick="limpar()">Limpar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="result">
+      <div class="box">
+        <span>Horas trabalhadas até agora</span>
+        <strong id="trabalhadas">--</strong>
+      </div>
+      <div class="box">
+        <span>Quanto falta</span>
+        <strong id="falta">--</strong>
+      </div>
+      <div class="box">
+        <span>Tempo total da jornada</span>
+        <strong id="total">--</strong>
+      </div>
+    </div>
+    <div class="status" id="status">Preencha os horários para calcular.</div>
+    <p class="hint">O cálculo considera o intervalo informado e funciona mesmo quando a jornada passa da meia-noite.</p>
+  </div>
+</div>
+
+<script>
+let timer;
+
+function minutos(hora) {
+  const [h,m] = hora.split(':').map(Number);
+  return h*60+m;
+}
+
+function formatar(min) {
+  min = Math.max(0, Math.round(min));
+  const h = Math.floor(min/60);
+  const m = min%60;
+  return `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}min`;
+}
+
+function agoraMinutos() {
+  const d = new Date();
+  return d.getHours()*60+d.getMinutes();
+}
+
+function calcular() {
+  const e = document.getElementById('entrada').value;
+  const s = document.getElementById('saida').value;
+  const intervalo = document.getElementById('intervalo').value || '00:00';
+
+  if (!e || !s) {
+    document.getElementById('status').textContent = 'Informe a entrada e a saída prevista.';
+    return;
+  }
+
+  let entrada = minutos(e);
+  let saida = minutos(s);
+  let int = minutos(intervalo);
+
+  if (saida <= entrada) saida += 1440;
+
+  const jornadaTotal = saida - entrada;
+  const metaTrabalho = Math.max(0, jornadaTotal - int);
+
+  let atual = agoraMinutos();
+  if (atual < entrada) atual += 1440;
+
+  let brutoAgora = Math.max(0, Math.min(atual, saida) - entrada);
+  let trabalhado = Math.max(0, brutoAgora - int);
+
+  const falta = Math.max(0, metaTrabalho - trabalhado);
+
+  document.getElementById('trabalhadas').textContent = formatar(trabalhado);
+  document.getElementById('falta').textContent = formatar(falta);
+  document.getElementById('total').textContent = formatar(metaTrabalho);
+
+  const status = document.getElementById('status');
+  if (atual >= saida) {
+    status.textContent = trabalhado >= metaTrabalho
+      ? '✅ Jornada concluída!'
+      : '🔴 Horário de saída atingido.';
+  } else {
+    status.textContent = `🟢 Faltam ${formatar(falta)} para completar a jornada.`;
+  }
+}
+
+function usarAgora() {
+  const d = new Date();
+  document.getElementById('entrada').value =
+    `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  calcular();
+}
+
+function limpar() {
+  document.getElementById('entrada').value = '';
+  document.getElementById('saida').value = '';
+  document.getElementById('intervalo').value = '01:00';
+  document.getElementById('trabalhadas').textContent = '--';
+  document.getElementById('falta').textContent = '--';
+  document.getElementById('total').textContent = '--';
+  document.getElementById('status').textContent = 'Preencha os horários para calcular.';
+}
+
+timer = setInterval(() => {
+  if (document.getElementById('entrada').value && document.getElementById('saida').value) calcular();
+}, 30000);
+</script>
+</body>
+</html>
